@@ -20,6 +20,8 @@ jobs:
         run: >
           LATEST_VERSION="${{ steps.get_release.outputs.release }}"
 
+          # We check the version in a single file to see if an update is needed
+
           CURRENT_VERSION=$(grep "_TOOLBOX_VERSION:"
           packages/toolbox-core/integration.cloudbuild.yaml | awk '{print $NF}'
           | tr -d "'")
@@ -33,21 +35,37 @@ jobs:
             echo "::set-output name=has_update::true"
             echo "::set-output name=new_version::$LATEST_VERSION"
           fi
-      - name: Update version in file
+      - name: Update version in files
         if: steps.check_version.outputs.has_update == 'true'
         run: >
-          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '${{
-          steps.check_version.outputs.new_version }}'/"
+          NEW_VERSION=${{ steps.check_version.outputs.new_version }}
+
+
+          # Update toolbox-core
+
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/"
           packages/toolbox-core/integration.cloudbuild.yaml
+
+
+          # Update toolbox-langchain
+
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/"
+          packages/toolbox-langchain/integration.cloudbuild.yaml
+
+
+          # Update toolbox-llamaindex
+
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/"
+          packages/toolbox-llamaindex/integration.cloudbuild.yaml
       - name: Create Pull Request
         if: steps.check_version.outputs.has_update == 'true'
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: >-
+          commit-message: >
             chore(deps): update genai-toolbox version to ${{
             steps.check_version.outputs.new_version }}
           title: 'chore(deps): update genai-toolbox version'
-          body: >-
-            This PR was automatically generated to update the `_TOOLBOX_VERSION`
-            to `${{ steps.check_version.outputs.new_version }}`.
+          body: >
+            This PR was automatically generated to update the _TOOLBOX_VERSION
+            to ${{ steps.check_version.outputs.new_version }}.
           branch: auto-update/genai-toolbox-version
