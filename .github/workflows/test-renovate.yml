@@ -1,0 +1,23 @@
+name: Test Renovate Dry Run
+'on':
+  workflow_dispatch:
+    inputs:
+      log-level:
+        description: 'Set the log level for Renovate (e.g., debug, info, warn)'
+        required: true
+        default: debug
+  schedule:
+    - cron: 0 7 * * *
+jobs:
+  renovate-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Run Renovate in Dry Run mode
+        env:
+          LOG_LEVEL: '${{ github.event.inputs.log-level || ''debug'' }}'
+          GITHUB_TOKEN: '${{ secrets.GITHUB_TOKEN }}'
+        run: |
+          # Use npx to run the Renovate CLI directly
+          npx renovate --dry-run=true
