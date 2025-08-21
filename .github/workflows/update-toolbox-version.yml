@@ -57,15 +57,12 @@ jobs:
 
           sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/"
           packages/toolbox-llamaindex/integration.cloudbuild.yaml
-      - name: Create Pull Request
-        if: steps.check_version.outputs.has_update == 'true'
-        uses: peter-evans/create-pull-request@v6
+
+      - name: 'Create Pull Request'
+        if: 'steps.check_version.outputs.has_update == ''true'''
+        uses: 'peter-evans/create-pull-request@v6'
         with:
-          commit-message: >
-            chore(deps): update genai-toolbox version to ${{
-            steps.check_version.outputs.new_version }}
-          title: 'chore(deps): update genai-toolbox version'
-          body: >
-            This PR was automatically generated to update the _TOOLBOX_VERSION
-            to ${{ steps.check_version.outputs.new_version }}.
-          branch: auto-update/genai-toolbox-version
+            commit-message: 'chore(deps): update genai-toolbox version to ${{ steps.check_version.outputs.new_version }}'
+            title: 'chore(deps): update genai-toolbox version to ${{ steps.check_version.outputs.new_version }}'
+            body: 'This PR was automatically generated to update the _TOOLBOX_VERSION to ${{ steps.check_version.outputs.new_version }}.'
+            branch: 'auto-update/genai-toolbox-version'
