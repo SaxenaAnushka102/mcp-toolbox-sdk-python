@@ -11,11 +11,11 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
       - name: Get latest release version of genai-toolbox
         id: get_release
-        uses: pozetroninc/github-action-get-latest-release@v0.8.0
+        uses: pozetroninc/github-action-get-latest-release@2a61c339ea7ef0a336d1daa35ef0cb1418e7676c # v0.8.0
         with:
           repository: 'googleapis/genai-toolbox'
           excludes: 'prerelease, draft'
@@ -51,7 +51,7 @@ jobs:
           
       - name: 'Create Pull Request'
         if: steps.check_version.outputs.has_update == 'true'
-        uses: 'peter-evans/create-pull-request@v6'
+        uses: 'peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c' # v6
         with:
           commit-message: 'chore(deps): update genai-toolbox version to ${{ steps.check_version.outputs.new_version }}'
           title: 'chore(deps): update genai-toolbox version to ${{ steps.check_version.outputs.new_version }}'
