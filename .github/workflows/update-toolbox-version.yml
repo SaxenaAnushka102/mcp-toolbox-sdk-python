@@ -1,9 +1,8 @@
-name: Auto-Update Toolbox Version
+name: Auto-Update Python Toolbox Version
 
 on:
-  schedule:
-    - cron: '0 6 * * *'  # Runs daily at 6 AM UTC
-  workflow_dispatch:  # Allows manual triggering from the GitHub UI
+  repository_dispatch:
+    types: [genai-toolbox-update]
 
 jobs:
   update-version:
@@ -13,47 +12,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Get latest release version of genai-toolbox
-        id: get_release
-        uses: pozetroninc/github-action-get-latest-release@v0.8.0
-        with:
-          repository: 'googleapis/genai-toolbox'
-          excludes: 'prerelease, draft'
-
-      - name: Check for new version
-        id: check_version
-        run: |
-          # The 'pozetroninc' action often returns the version with a 'v' prefix.
-          # We need to remove it to match the format in the build file.
-          LATEST_VERSION_CLEAN=$(echo "${{ steps.get_release.outputs.release }}" | sed 's/^v//')
-          
-          CURRENT_VERSION=$(grep "_TOOLBOX_VERSION:" packages/toolbox-core/integration.cloudbuild.yaml | awk '{print $NF}' | tr -d "'")
-          echo "Latest version is $LATEST_VERSION_CLEAN"
-          echo "Current version is $CURRENT_VERSION"
-
-          if [ "$LATEST_VERSION_CLEAN" != "$CURRENT_VERSION" ]; then
-            echo "has_update=true" >> "$GITHUB_OUTPUT"
-            echo "new_version=$LATEST_VERSION_CLEAN" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Update version in files
-        if: steps.check_version.outputs.has_update == 'true'
         run: |
-          NEW_VERSION=${{ steps.check_version.outputs.new_version }}
+          NEW_VERSION=${{ github.event.client_payload.new_version }}
+          # Remove the 'v' prefix from the version tag
+          NEW_VERSION_CLEAN=$(echo "$NEW_VERSION" | sed 's/^v//')
+          
           # Update toolbox-core
-          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-core/integration.cloudbuild.yaml
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-core/integration.cloudbuild.yaml
           
           # Update toolbox-langchain
-          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-langchain/integration.cloudbuild.yaml
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-langchain/integration.cloudbuild.yaml
           
           # Update toolbox-llamaindex
-          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-llamaindex/integration.cloudbuild.yaml
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-llamaindex/integration.cloudbuild.yaml
           
       - name: 'Create Pull Request'
-        if: steps.check_version.outputs.has_update == 'true'
         uses: 'peter-evans/create-pull-request@v6'
         with:
-          commit-message: 'chore(deps): update genai-toolbox version to ${{ steps.check_version.outputs.new_version }}'
-          title: 'chore(deps): update genai-toolbox version to ${{ steps.check_version.outputs.new_version }}'
-          body: 'This PR was automatically generated to update the _TOOLBOX_VERSION to ${{ steps.check_version.outputs.new_version }}.'
+          commit-message: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version }}'
+          title: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version }}'
+          body: 'This PR was automatically generated to update the _TOOLBOX_VERSION to ${{ github.event.client_payload.new_version }}.'
           branch: 'auto-update/genai-toolbox-version'
