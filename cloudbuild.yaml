@@ -1,0 +1,46 @@
+steps:
+  - id: 'Get PAT from Secret Manager'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        PAT=$(gcloud secrets versions access latest --secret=github-pat --project=${_PROJECT_ID})
+        echo "PAT=$PAT" >> /workspace/env_vars.txt
+
+  - id: 'Update version in files'
+    name: 'ubuntu'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        source /workspace/env_vars.txt
+        NEW_VERSION=${_TOOLBOX_VERSION}
+        # Update toolbox-core
+        sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-core/integration.cloudbuild.yaml
+        # Update toolbox-langchain
+        sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-langchain/integration.cloudbuild.yaml
+        # Update toolbox-llamaindex
+        sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-llamaindex/integration.cloudbuild.yaml
+
+  - id: 'Create Pull Request'
+    name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        source /workspace/env_vars.txt
+        git config --global user.email "anushkasaxenaa@google.com"
+        git config --global user.name "Cloud Build Bot"
+        git config --global url."https://${PAT}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        
+        BRANCH_NAME="auto-update/toolbox-version-${_TOOLBOX_VERSION}"
+        git checkout -b "$BRANCH_NAME"
+        git add .
+        git commit -m "chore(deps): update genai-toolbox version to ${_TOOLBOX_VERSION}"
+        git push origin "$BRANCH_NAME"
+        
+        gh pr create --title "chore(deps): update genai-toolbox version to ${_TOOLBOX_VERSION}" --body "Automated update to version ${_TOOLBOX_VERSION}" --head "$BRANCH_NAME"
+
+substitutions:
+  _TOOLBOX_VERSION: '0.8.0'
