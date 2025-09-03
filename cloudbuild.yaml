@@ -31,7 +31,7 @@ steps:
       - |
         source /workspace/env_vars.txt
         git config --global user.email "anushkasaxenaa@google.com"
-        git config --global user.name "Cloud Build Bot"
+        git config --global user.name "Cloud Build Bot Anushka"
         git config --global url."https://${PAT}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
         
         BRANCH_NAME="auto-update/toolbox-version-${_TOOLBOX_VERSION}"
