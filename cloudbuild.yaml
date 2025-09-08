@@ -5,7 +5,6 @@ steps:
     args:
       - '-c'
       - |
-        # Use the version from the dispatcher build
         NEW_VERSION=${_TOOLBOX_VERSION}
         # Update toolbox-core
         sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-core/integration.cloudbuild.yaml
