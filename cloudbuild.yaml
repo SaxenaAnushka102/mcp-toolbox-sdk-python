@@ -1,20 +1,11 @@
 steps:
-  - id: 'Get PAT from Secret Manager'
-    name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        PAT=$(gcloud secrets versions access latest --secret=github-pat --project=${_PROJECT_ID})
-        echo "PAT=$PAT" >> /workspace/env_vars.txt
-
   - id: 'Update version in files'
     name: 'ubuntu'
     entrypoint: 'bash'
     args:
       - '-c'
       - |
-        source /workspace/env_vars.txt
+        # Use the version from the dispatcher build
         NEW_VERSION=${_TOOLBOX_VERSION}
         # Update toolbox-core
         sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION'/" packages/toolbox-core/integration.cloudbuild.yaml
@@ -29,10 +20,10 @@ steps:
     args:
       - '-c'
       - |
-        source /workspace/env_vars.txt
+        # Use the PAT from the dispatcher build
         git config --global user.email "anushkasaxenaa@google.com"
         git config --global user.name "Cloud Build Bot Anushka"
-        git config --global url."https://${PAT}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
+        git config --global url."https://${_PAT}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
         
         BRANCH_NAME="auto-update/toolbox-version-${_TOOLBOX_VERSION}"
         git checkout -b "$BRANCH_NAME"
