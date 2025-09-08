@@ -42,5 +42,7 @@ steps:
         
         gh pr create --title "chore(deps): update genai-toolbox version to ${_TOOLBOX_VERSION}" --body "Automated update to version ${_TOOLBOX_VERSION}" --head "$BRANCH_NAME"
 
+options:
+  logging: CLOUD_LOGGING_ONLY
 substitutions:
   _TOOLBOX_VERSION: '0.8.0'
