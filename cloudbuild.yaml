@@ -19,19 +19,24 @@ steps:
     args:
       - '-c'
       - |
-        # Use the PAT from the dispatcher build
+        # Configure Git with the PAT for authentication
         git config --global user.email "anushkasaxenaa@google.com"
         git config --global user.name "Cloud Build Bot Anushka"
         git config --global url."https://${_PAT}:x-oauth-basic@github.com/".insteadOf "https://github.com/"
         
+        # Install the GitHub CLI
+        apt-get update && apt-get install -y gh
+        
+        # Set up branch and commit
         BRANCH_NAME="auto-update/toolbox-version-${_TOOLBOX_VERSION}"
         git checkout -b "$BRANCH_NAME"
         git add .
         git commit -m "chore(deps): update genai-toolbox version to ${_TOOLBOX_VERSION}"
         git push origin "$BRANCH_NAME"
         
+        # Create the PR
         gh pr create --title "chore(deps): update genai-toolbox version to ${_TOOLBOX_VERSION}" --body "Automated update to version ${_TOOLBOX_VERSION}" --head "$BRANCH_NAME"
-
+        
 options:
   logging: CLOUD_LOGGING_ONLY
 substitutions:
