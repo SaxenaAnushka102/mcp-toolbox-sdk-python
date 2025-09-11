@@ -16,7 +16,7 @@ steps:
     args:
       - '-c'
       - |
-        _PAT=$(gcloud secrets versions access latest --secret=github-_PAT --project=${_PROJECT_ID})
+        _PAT=$(gcloud secrets versions access latest --secret=github-pat --project=${_PROJECT_ID})
 
         git config --global user.email "anushkasaxenaa@google.com"
         git config --global user.name "Cloud Build Bot Anushka"
