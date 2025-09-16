@@ -20,7 +20,7 @@ steps:
 
         git config --global user.email "anushkasaxenaa@google.com"
         git config --global user.name "Cloud Build Bot Anushka"
-        git config --global url."https://${_PAT}@github.com/SaxenaAnushka102/".insteadOf "https://github.com/"
+        git config --global url."https://${_PAT}@github.com/".insteadOf "https://github.com/"
         
         # Install the GitHub CLI
         apt-get update && apt-get install -y gh
