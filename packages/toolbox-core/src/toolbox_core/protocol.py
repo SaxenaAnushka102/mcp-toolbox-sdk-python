@@ -13,9 +13,38 @@
 # limitations under the License.
 
 from inspect import Parameter
-from typing import Optional, Type
+from typing import Annotated, Any, Optional, Type, Union
 
 from pydantic import BaseModel
+
+__TYPE_MAP = {
+    "string": str,
+    "integer": int,
+    "float": float,
+    "boolean": bool,
+}
+
+
+def _get_python_type(type_name: str) -> Type:
+    """
+    A helper function to convert a schema type string to a Python type.
+    """
+    try:
+        return __TYPE_MAP[type_name]
+    except KeyError:
+        raise ValueError(f"Unsupported schema type: {type_name}")
+
+
+class AdditionalPropertiesSchema(BaseModel):
+    """
+    Defines the value type for 'object' parameters.
+    """
+
+    type: str
+
+    def get_value_type(self) -> Type:
+        """Converts the string type to a Python type."""
+        return _get_python_type(self.type)
 
 
 class ParameterSchema(BaseModel):
@@ -29,34 +58,33 @@ class ParameterSchema(BaseModel):
     description: str
     authSources: Optional[list[str]] = None
     items: Optional["ParameterSchema"] = None
+    additionalProperties: Optional[Union[bool, AdditionalPropertiesSchema]] = None
 
-    def __get_type(self) -> Type:
-        base_type: Type
-        if self.type == "string":
-            base_type = str
-        elif self.type == "integer":
-            base_type = int
-        elif self.type == "float":
-            base_type = float
-        elif self.type == "boolean":
-            base_type = bool
-        elif self.type == "array":
+    def __get_annotation(self) -> Any:
+        base_type: Any
+        if self.type == "array":
             if self.items is None:
                 raise ValueError("Unexpected value: type is 'array' but items is None")
-            base_type = list[self.items.__get_type()]  # type: ignore
+            base_type = list[self.items.__get_annotation()]  # type: ignore
+        elif self.type == "object":
+            if isinstance(self.additionalProperties, AdditionalPropertiesSchema):
+                value_type = self.additionalProperties.get_value_type()
+                base_type = dict[str, value_type]  # type: ignore
+            else:
+                base_type = dict[str, Any]
         else:
-            raise ValueError(f"Unsupported schema type: {self.type}")
+            base_type = _get_python_type(self.type)
 
         if not self.required:
-            return Optional[base_type]  # type: ignore
+            base_type = Optional[base_type]
 
-        return base_type
+        return Annotated[base_type, self.description]
 
     def to_param(self) -> Parameter:
         return Parameter(
             self.name,
             Parameter.POSITIONAL_OR_KEYWORD,
-            annotation=self.__get_type(),
+            annotation=self.__get_annotation(),
             default=Parameter.empty if self.required else None,
         )
 

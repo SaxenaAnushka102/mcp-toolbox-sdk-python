@@ -15,7 +15,7 @@
 
 import inspect
 from types import MappingProxyType
-from typing import AsyncGenerator, Callable, Mapping
+from typing import Annotated, AsyncGenerator, Callable, Mapping
 from unittest.mock import AsyncMock, Mock
 from warnings import catch_warnings, simplefilter
 
@@ -26,7 +26,7 @@ from aioresponses import aioresponses
 from pydantic import ValidationError
 
 from toolbox_core.protocol import ParameterSchema
-from toolbox_core.tool import ToolboxTool, create_func_docstring, resolve_value
+from toolbox_core.tool import ToolboxTool, resolve_value
 
 TEST_BASE_URL = "http://toolbox.example.com"
 HTTPS_BASE_URL = "https://toolbox.example.com"
@@ -124,91 +124,6 @@ def toolbox_tool(
     )
 
 
-def test_create_func_docstring_one_param_real_schema():
-    """
-    Tests create_func_docstring with one real ParameterSchema instance.
-    """
-    description = "This tool does one thing."
-    params = [
-        ParameterSchema(
-            name="input_file", type="string", description="Path to the input file."
-        )
-    ]
-
-    result_docstring = create_func_docstring(description, params)
-
-    expected_docstring = (
-        "This tool does one thing.\n\n"
-        "Args:\n"
-        "    input_file (str): Path to the input file."
-    )
-
-    assert result_docstring == expected_docstring
-
-
-def test_create_func_docstring_multiple_params_real_schema():
-    """
-    Tests create_func_docstring with multiple real ParameterSchema instances.
-    """
-    description = "This tool does multiple things."
-    params = [
-        ParameterSchema(name="query", type="string", description="The search query."),
-        ParameterSchema(
-            name="max_results", type="integer", description="Maximum results to return."
-        ),
-        ParameterSchema(
-            name="verbose", type="boolean", description="Enable verbose output."
-        ),
-    ]
-
-    result_docstring = create_func_docstring(description, params)
-
-    expected_docstring = (
-        "This tool does multiple things.\n\n"
-        "Args:\n"
-        "    query (str): The search query.\n"
-        "    max_results (int): Maximum results to return.\n"
-        "    verbose (bool): Enable verbose output."
-    )
-
-    assert result_docstring == expected_docstring
-
-
-def test_create_func_docstring_no_description_real_schema():
-    """
-    Tests create_func_docstring with empty description and one real ParameterSchema.
-    """
-    description = ""
-    params = [
-        ParameterSchema(
-            name="config_id", type="string", description="The ID of the configuration."
-        )
-    ]
-
-    result_docstring = create_func_docstring(description, params)
-
-    expected_docstring = (
-        "\n\nArgs:\n" "    config_id (str): The ID of the configuration."
-    )
-
-    assert result_docstring == expected_docstring
-    assert result_docstring.startswith("\n\nArgs:")
-    assert "config_id (str): The ID of the configuration." in result_docstring
-
-
-def test_create_func_docstring_no_params():
-    """
-    Tests create_func_docstring when the params list is empty.
-    """
-    description = "This is a tool description."
-    params = []
-
-    result_docstring = create_func_docstring(description, params)
-
-    assert result_docstring == description
-    assert "\n\nArgs:" not in result_docstring
-
-
 @pytest.mark.asyncio
 async def test_tool_creation_callable_and_run(
     http_session: ClientSession,
@@ -247,8 +162,14 @@ async def test_tool_creation_callable_and_run(
 
         assert "message" in tool_instance.__signature__.parameters
         assert "count" in tool_instance.__signature__.parameters
-        assert tool_instance.__signature__.parameters["message"].annotation == str
-        assert tool_instance.__signature__.parameters["count"].annotation == int
+        assert (
+            tool_instance.__signature__.parameters["message"].annotation
+            == Annotated[str, "A message to process"]
+        )
+        assert (
+            tool_instance.__signature__.parameters["count"].annotation
+            == Annotated[int, "A number"]
+        )
 
         actual_result = await tool_instance("hello world", 5)
 
@@ -411,33 +332,6 @@ def test_tool_init_with_client_headers(
     assert tool_instance._ToolboxTool__client_headers == static_client_header
 
 
-def test_tool_init_header_auth_conflict(
-    http_session,
-    sample_tool_auth_params,
-    sample_tool_description,
-    auth_getters,
-    auth_header_key,
-):
-    """Tests ValueError on init if client header conflicts with auth token."""
-    conflicting_client_header = {auth_header_key: "some-client-value"}
-
-    with pytest.raises(
-        ValueError, match=f"Client header\\(s\\) `{auth_header_key}` already registered"
-    ):
-        ToolboxTool(
-            session=http_session,
-            base_url=HTTPS_BASE_URL,
-            name="auth_conflict_tool",
-            description=sample_tool_description,
-            params=sample_tool_auth_params,
-            required_authn_params={},
-            required_authz_tokens=[],
-            auth_service_token_getters=auth_getters,
-            bound_params={},
-            client_headers=conflicting_client_header,
-        )
-
-
 def test_tool_add_auth_token_getters_conflict_with_existing_client_header(
     http_session: ClientSession,
     sample_tool_params: list[ParameterSchema],
@@ -473,33 +367,62 @@ def test_tool_add_auth_token_getters_conflict_with_existing_client_header(
         tool_instance.add_auth_token_getters(new_auth_getters_causing_conflict)
 
 
-def test_add_auth_token_getters_unused_token(
+@pytest.mark.asyncio
+async def test_auth_token_overrides_client_header(
     http_session: ClientSession,
-    sample_tool_params: list[ParameterSchema],
     sample_tool_description: str,
-    unused_auth_getters: Mapping[str, Callable[[], str]],
+    sample_tool_params: list[ParameterSchema],
 ):
     """
-    Tests ValueError when add_auth_token_getters is called with a getter for
-    an unused authentication service.
+    Tests that an auth token getter's value overrides a client header
+    with the same name during the actual tool call.
     """
-    tool_instance = ToolboxTool(
-        session=http_session,
-        base_url=HTTPS_BASE_URL,
-        name=TEST_TOOL_NAME,
-        description=sample_tool_description,
-        params=sample_tool_params,
-        required_authn_params={},
-        required_authz_tokens=[],
-        auth_service_token_getters={},
-        bound_params={},
-        client_headers={},
-    )
 
-    expected_error_message = "Authentication source\(s\) \`unused-auth-service\` unused by tool \`sample_tool\`."
+    auth_service_name = "test-auth"
+    auth_header_key = f"{auth_service_name}_token"
+    auth_token_value = "value-from-auth-getter-123"
+    auth_getters = {auth_service_name: lambda: auth_token_value}
 
-    with pytest.raises(ValueError, match=expected_error_message):
-        tool_instance.add_auth_token_getters(unused_auth_getters)
+    tool_name = TEST_TOOL_NAME
+    base_url = HTTPS_BASE_URL
+    invoke_url = f"{base_url}/api/tool/{tool_name}/invoke"
+
+    client_headers = {
+        auth_header_key: "value-from-client",
+        "X-Another-Header": "another-value",
+    }
+
+    input_args = {"message": "test", "count": 1}
+    mock_server_response = {"result": "Success"}
+
+    with aioresponses() as m:
+        m.post(invoke_url, status=200, payload=mock_server_response)
+
+        tool_instance = ToolboxTool(
+            session=http_session,
+            base_url=base_url,
+            name=tool_name,
+            description=sample_tool_description,
+            params=sample_tool_params,
+            auth_service_token_getters=auth_getters,
+            client_headers=client_headers,
+            required_authn_params={},
+            required_authz_tokens=[],
+            bound_params={},
+        )
+
+        # Call the tool
+        await tool_instance(**input_args)
+
+        m.assert_called_once_with(
+            invoke_url,
+            method="POST",
+            json=input_args,
+            headers={
+                auth_header_key: auth_token_value,
+                "X-Another-Header": "another-value",
+            },
+        )
 
 
 def test_add_auth_token_getter_unused_token(

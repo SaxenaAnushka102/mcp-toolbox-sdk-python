@@ -24,7 +24,6 @@ from aiohttp import ClientSession
 
 from .protocol import ParameterSchema
 from .utils import (
-    create_func_docstring,
     identify_auth_requirements,
     params_to_pydantic_model,
     resolve_value,
@@ -101,26 +100,13 @@ class ToolboxTool:
 
         # the following properties are set to help anyone that might inspect it determine usage
         self.__name__ = name
-        self.__doc__ = create_func_docstring(self.__description, self.__params)
+        self.__doc__ = self.__description
         self.__signature__ = Signature(
             parameters=inspect_type_params, return_annotation=str
         )
 
         self.__annotations__ = {p.name: p.annotation for p in inspect_type_params}
         self.__qualname__ = f"{self.__class__.__qualname__}.{self.__name__}"
-
-        # Validate conflicting Headers/Auth Tokens
-        request_header_names = client_headers.keys()
-        auth_token_names = [
-            self.__get_auth_header(auth_token_name)
-            for auth_token_name in auth_service_token_getters.keys()
-        ]
-        duplicates = request_header_names & auth_token_names
-        if duplicates:
-            raise ValueError(
-                f"Client header(s) `{', '.join(duplicates)}` already registered in client. "
-                f"Cannot register client the same headers in the client as well as tool."
-            )
 
         # map of parameter name to auth service required by it
         self.__required_authn_params = required_authn_params

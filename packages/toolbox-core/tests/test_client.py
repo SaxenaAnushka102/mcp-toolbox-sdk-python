@@ -15,7 +15,7 @@
 
 import inspect
 import json
-from typing import Any, Callable, Mapping, Optional
+from typing import Annotated, Any, Callable, Mapping, Optional, get_args, get_origin
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -192,15 +192,30 @@ async def test_load_tool_success(aioresponses, test_tool_str):
         assert callable(loaded_tool)
         # Assert introspection attributes are set correctly
         assert loaded_tool.__name__ == TOOL_NAME
-        expected_description = (
-            test_tool_str.description
-            + f"\n\nArgs:\n    param1 (str): Description of Param1"
-        )
+        expected_description = test_tool_str.description
         assert loaded_tool.__doc__ == expected_description
 
-        # Assert signature inspection
+        # Assert signature inspection, including annotated descriptions
         sig = inspect.signature(loaded_tool)
-        assert list(sig.parameters.keys()) == [p.name for p in test_tool_str.parameters]
+        actual_params_map = sig.parameters
+        expected_params_list = test_tool_str.parameters
+
+        assert len(actual_params_map) == len(expected_params_list)
+
+        for expected_param_schema in expected_params_list:
+            param_name = expected_param_schema.name
+            assert param_name in actual_params_map
+            actual_param = actual_params_map[param_name]
+            annotation = actual_param.annotation
+            assert get_origin(annotation) is Annotated
+            annotation_args = get_args(annotation)
+            actual_param_description = annotation_args[1]
+            assert actual_param_description == expected_param_schema.description
+
+            if expected_param_schema.required:
+                assert actual_param.default is inspect.Parameter.empty
+            else:
+                assert actual_param.default is None
 
         assert await loaded_tool("some value") == "ok"
 
@@ -1478,35 +1493,3 @@ class TestClientHeaders:
                     match=f"Client header\\(s\\) `X-Static-Header` already registered",
                 ):
                     client.add_headers(static_header)
-
-    @pytest.mark.asyncio
-    async def test_client_header_auth_token_conflict_fail(
-        self, aioresponses, test_tool_auth
-    ):
-        """
-        Tests that loading a tool fails if a client header conflicts with an
-        auth token name.
-        """
-        tool_name = "auth_conflict_tool"
-        conflict_key = "my-auth-service_token"
-        manifest = ManifestSchema(
-            serverVersion="0.0.0", tools={tool_name: test_tool_auth}
-        )
-
-        conflicting_headers = {conflict_key: "some_value"}
-        auth_getters = {"my-auth-service": lambda: "token_val"}
-
-        aioresponses.get(
-            f"{TEST_BASE_URL}/api/tool/{tool_name}",
-            payload=manifest.model_dump(),
-            status=200,
-        )
-
-        async with ToolboxClient(
-            TEST_BASE_URL, client_headers=conflicting_headers
-        ) as client:
-            with pytest.raises(
-                ValueError,
-                match=f"Client header\\(s\\) `{conflict_key}` already registered",
-            ):
-                await client.load_tool(tool_name, auth_token_getters=auth_getters)
