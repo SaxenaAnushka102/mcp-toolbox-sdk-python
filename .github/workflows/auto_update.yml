@@ -1,9 +1,14 @@
-name: Auto-Update Toolbox Version
+name: Auto-Update Python Toolbox Version
 
 on:
   repository_dispatch:
     types: [genai-toolbox-update]
   workflow_dispatch:
+    inputs:
+      new_version:
+        description: 'Test version to use (e.g., v1.2.3)'
+        required: true
+        default: 'v0.0.0-manual'
 
 jobs:
   update-version:
@@ -18,20 +23,15 @@ jobs:
 
       - name: Update version in files
         run: |
-          NEW_VERSION=${{ github.event.client_payload.new_version }}
+          NEW_VERSION=${{ github.event.client_payload.new_version || github.event.inputs.new_version }}
+          echo "Using version: $NEW_VERSION"
           # Remove the 'v' prefix from the version tag
           NEW_VERSION_CLEAN=$(echo "$NEW_VERSION" | sed 's/^v//')
 
-          # Update toolbox-core
           sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-core/integration.cloudbuild.yaml
-
-          # Update toolbox-langchain
           sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-langchain/integration.cloudbuild.yaml
-
-          # Update toolbox-llamaindex
           sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-llamaindex/integration.cloudbuild.yaml
 
-          # Stage changes
           git add packages/toolbox-core/integration.cloudbuild.yaml
           git add packages/toolbox-langchain/integration.cloudbuild.yaml
           git add packages/toolbox-llamaindex/integration.cloudbuild.yaml
@@ -42,8 +42,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         uses: googleapis/code-suggester@v2
         with:
-          command: create_pr
-          branch: 'auto-update/genai-toolbox-version'
-          message: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version }}'
-          title: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version }}'
-          body: 'This PR was automatically generated to update the _TOOLBOX_VERSION to ${{ github.event.client_payload.new_version }}.'
+          command: pr
+          branch: 'auto-update/genai-toolbox-version-test'
+          message: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version || github.event.inputs.new_version }}'
+          title: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version || github.event.inputs.new_version }} (Test)'
+          description: 'This PR was automatically generated for testing to update the _TOOLBOX_VERSION to ${{ github.event.client_payload.new_version || github.event.inputs.new_version }}.'
