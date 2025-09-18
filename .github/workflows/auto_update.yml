@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4
 
       - name: Update version in files
         run: |
@@ -40,7 +40,7 @@ jobs:
         env:
           ACCESS_TOKEN: ${{ secrets.YOSHI_CODE_BOT_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        uses: googleapis/code-suggester@v2
+        uses: googleapis/code-suggester@9222591646c050504e4a341ab8418cbfb5f619e1 # v2
         with:
           command: pr
           branch: 'auto-update/genai-toolbox-version-test'
