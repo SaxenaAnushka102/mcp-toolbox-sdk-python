@@ -1,4 +1,4 @@
-name: Auto-Update Python Toolbox Version
+name: Auto-Update Toolbox Version
 
 on:
   repository_dispatch:
