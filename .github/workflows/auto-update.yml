@@ -3,6 +3,7 @@ name: Auto-Update Python Toolbox Version
 on:
   repository_dispatch:
     types: [genai-toolbox-update]
+  workflow_dispatch:
 
 jobs:
   update-version:
