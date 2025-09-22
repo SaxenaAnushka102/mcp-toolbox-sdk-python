@@ -51,15 +51,17 @@
   "regexManagers": [
     {
       "fileMatch": [
-        "packages/.*/integration.cloudbuild.yaml"
+        "packages/toolbox-core/integration.cloudbuild.yaml",
+        "packages/toolbox-langchain/integration.cloudbuild.yaml",
+        "packages/toolbox-llamaindex/integration.cloudbuild.yaml"
       ],
       "matchStrings": [
-        "_TOOLBOX_VERSION: '(?<currentValue>\\d+\\.\\d+\\.\\d+)'"
+        "_TOOLBOX_VERSION: ['"](?<currentValue>v?\d+\.\d+\.\d+)['\"]"
       ],
-      "datasourceTemplate": "release-please",
-      "depNameTemplate": "toolbox-core",
-      "lookupNameTemplate": "{{{filePath}}}",
-      "versioningTemplate": "semver"
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "googleapis/genai-toolbox",
+      "versioningTemplate": "semver",
+      "packageNameTemplate": "googleapis/genai-toolbox"
     }
   ]
 }
