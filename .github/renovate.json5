@@ -1,13 +1,16 @@
 {
   "extends": [
     "config:recommended",
-    ":semanticCommits",
+    ":semanticCommitTypeAll(chore)",
     ":ignoreUnstable",
     "group:allNonMajor",
     ":separateMajorReleases",
     ":prConcurrentLimitNone",
     ":prHourlyLimitNone",
     ":preserveSemverRanges"
+  ],
+  "ignorePaths": [
+    ".kokoro/**"
   ],
   "minimumReleaseAge": "3",
   "rebaseWhen": "conflicted",
@@ -40,12 +43,6 @@
         "minor",
         "patch"
       ]
-    },
-    {
-      "groupName": "kokoro dependencies",
-      "matchFileNames": [
-        ".kokoro/**"
-      ]
     }
   ],
   "regexManagers": [
@@ -56,7 +53,7 @@
         "packages/toolbox-llamaindex/integration.cloudbuild.yaml"
       ],
       "matchStrings": [
-        "_TOOLBOX_VERSION: ['"](?<currentValue>v?\d+\.\d+\.\d+)['\"]"
+        "_TOOLBOX_VERSION: ['|\"](?<currentValue>v?\\d+\\.\\d+\\.\\d+)['|\"]"
       ],
       "datasourceTemplate": "github-releases",
       "depNameTemplate": "googleapis/genai-toolbox",
