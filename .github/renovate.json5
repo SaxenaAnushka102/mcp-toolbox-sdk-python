@@ -1,51 +1,64 @@
 {
-  extends: [
-    'config:recommended',
-    ':semanticCommits',
-    ':ignoreUnstable',
-    'group:allNonMajor',
-    ':separateMajorReleases',
-    ':prConcurrentLimitNone',
-    ':prHourlyLimitNone',
-    ':preserveSemverRanges',
+  "extends": [
+    "config:recommended",
+    ":semanticCommitTypeAll(chore)",
+    ":ignoreUnstable",
+    "group:allNonMajor",
+    ":separateMajorReleases",
+    ":prConcurrentLimitNone",
+    ":prHourlyLimitNone",
+    ":preserveSemverRanges"
   ],
-  minimumReleaseAge: '3',
-  rebaseWhen: 'conflicted',
-  dependencyDashboardLabels: [
-    'type: process',
+  "ignorePaths": [
+    ".kokoro/**"
   ],
-  packageRules: [
-    {
-      groupName: 'GitHub Actions',
-      matchManagers: [
-        'github-actions',
-      ],
-      pinDigests: true,
-    },
-    {
-      matchPackageNames: [
-        'pytest',
-      ],
-      matchUpdateTypes: [
-        'minor',
-        'major',
-      ],
-    },
-    {
-      groupName: 'python-nonmajor',
-      matchCategories: [
-        'python',
-      ],
-      matchUpdateTypes: [
-        'minor',
-        'patch',
-      ],
-    },
-    {
-      groupName: 'kokoro dependencies',
-      matchFileNames: [
-        '.kokoro/**',
-      ],
-    },
+  "minimumReleaseAge": "3",
+  "rebaseWhen": "conflicted",
+  "dependencyDashboardLabels": [
+    "type: process"
   ],
+  "packageRules": [
+    {
+      "groupName": "GitHub Actions",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "pinDigests": true
+    },
+    {
+      "matchPackageNames": [
+        "pytest"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "major"
+      ]
+    },
+    {
+      "groupName": "python-nonmajor",
+      "matchCategories": [
+        "python"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ]
+    }
+  ],
+  "regexManagers": [
+    {
+      "fileMatch": [
+        "packages/toolbox-core/integration.cloudbuild.yaml",
+        "packages/toolbox-langchain/integration.cloudbuild.yaml",
+        "packages/toolbox-llamaindex/integration.cloudbuild.yaml"
+      ],
+      "matchStrings": [
+        "_TOOLBOX_VERSION: ['|\"](?<currentValue>v?\\d+\\.\\d+\\.\\d+)['|\"]"
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "googleapis/genai-toolbox",
+      "versioningTemplate": "semver",
+      "packageNameTemplate": "googleapis/genai-toolbox"
+    }
+  ]
 }

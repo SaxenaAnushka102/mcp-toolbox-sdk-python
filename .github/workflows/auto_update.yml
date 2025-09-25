@@ -1,0 +1,49 @@
+name: Auto-Update Python Toolbox Version
+
+on:
+  repository_dispatch:
+    types: [genai-toolbox-update]
+  workflow_dispatch:
+    inputs:
+      new_version:
+        description: 'Test version to use (e.g., v1.2.3)'
+        required: true
+        default: 'v0.0.0-manual'
+
+jobs:
+  update-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update version in files
+        run: |
+          NEW_VERSION=${{ github.event.client_payload.new_version || github.event.inputs.new_version }}
+          echo "Using version: $NEW_VERSION"
+          # Remove the 'v' prefix from the version tag
+          NEW_VERSION_CLEAN=$(echo "$NEW_VERSION" | sed 's/^v//')
+
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-core/integration.cloudbuild.yaml
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-langchain/integration.cloudbuild.yaml
+          sed -i "s/_TOOLBOX_VERSION: '.*/_TOOLBOX_VERSION: '$NEW_VERSION_CLEAN'/" packages/toolbox-llamaindex/integration.cloudbuild.yaml
+
+          git add packages/toolbox-core/integration.cloudbuild.yaml
+          git add packages/toolbox-langchain/integration.cloudbuild.yaml
+          git add packages/toolbox-llamaindex/integration.cloudbuild.yaml
+
+      - name: 'Create Pull Request'
+        env:
+          ACCESS_TOKEN: ${{ secrets.YOSHI_CODE_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: googleapis/code-suggester@v2
+        with:
+          command: pr
+          branch: 'auto-update/genai-toolbox-version-test'
+          message: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version || github.event.inputs.new_version }}'
+          title: 'chore(deps): update genai-toolbox version to ${{ github.event.client_payload.new_version || github.event.inputs.new_version }} (Test)'
+          description: 'This PR was automatically generated for testing to update the _TOOLBOX_VERSION to ${{ github.event.client_payload.new_version || github.event.inputs.new_version }}.'
